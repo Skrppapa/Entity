@@ -25,7 +25,7 @@ namespace Product
         public int QuantityOrdered { get; set; }
     }
 
-    public class BloggingContext : DbContext
+    public class ProductContext : DbContext // Поменял название на Product
     {
         public DbSet<Product> Products { get; set; }
         public DbSet<Order> Orders { get; set; }
@@ -40,7 +40,7 @@ namespace Product
     {
         static void Main()
         {
-            using (var context = new BloggingContext())
+            using (var context = new ProductContext())
             {
                 // Создание нового товара
                 var productsToAdd = new List<Product>
@@ -106,8 +106,16 @@ namespace Product
                     }
                 }
 
-                // Общая стоимость товара
-                decimal totalOrderCost = newOrder.OrderItems.Sum(item => item.QuantityOrdered * context.Products.FirstOrDefault(p => p.ProductId == item.ProductId)?.Price ?? 0);
+                var productsIds = newOrder.OrderItems.Select(oi => oi.ProductId).ToList();
+
+                var producs = context.Products.Where(p => productsIds.Contains(p.ProductId)).Select(x => new
+                {
+                    x.Price,
+                    x.ProductId
+                }).ToDictionary(x => x.ProductId);
+
+                // Общая стоимость товара. Считаем через словарь, а не через прохождение всего списка товаров
+                decimal totalOrderCost = newOrder.OrderItems.Sum(item => item.QuantityOrdered * producs.GetValueOrDefault(item.ProductId)?.Price ?? 0);
 
                 // Сохраняем заказ
                 context.Orders.Add(newOrder);
